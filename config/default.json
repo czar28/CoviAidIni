@@ -1,0 +1,4 @@
+{
+    "mongoURI":"mongodb+srv://czar28:czar28DB@clustercoviaid.g32jh.mongodb.net/myFirstDatabase?retryWrites=true&w=majority",
+    "jwtSecret":"7+K_&2FFCSX*rv=JKz4?FSTUyjLZjsqx89YXd3At^z!T*x9&D97AcULdkH6Z4Nuz"
+}
