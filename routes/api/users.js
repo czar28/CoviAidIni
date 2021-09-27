@@ -12,7 +12,7 @@ var request = require('request');
 
 //Register a new User in Database
 
-//@route POST api/users
+//@route POST api/users/
 // @desc Register New User Route
 //@access public
 
@@ -71,6 +71,7 @@ router.post(
       const payload = {
         user: {
           id: user.id,
+          email: user.email,
         },
       };
 
@@ -91,6 +92,67 @@ router.post(
   }
 );
 
+//@route GET api/users/
+// @desc Login User Route
+//@access public
+
+// router.get(
+//   '/',
+//   [
+//     check('email', 'Please Enter a valid email address').isEmail(),
+//     check('password', 'Please Enter a password of minimum 6 length')
+//       .not()
+//       .isEmpty(),
+//   ],
+//   async (req, res) => {
+//     const errorsValidation = validationResult(req);
+//     if (!errorsValidation.isEmpty()) {
+//       return res.status(400).json({ errors: errorsValidation.array() });
+//     }
+
+//     try {
+//       const { email, password } = req.body;
+
+//       //see if user already exists
+//       let user = await User.findOne({ email });
+
+//       if (!user) {
+//         return res
+//           .status(400)
+//           .json({ errors: [{ msg: 'Invalid credentials' }] });
+//       }
+
+//       const isMatch = await bcrypt.compare(password, user.password);
+//       if (!isMatch) {
+//         return res
+//           .status(400)
+//           .json({ errors: [{ msg: 'Invalid credentials' }] });
+//       }
+//       //Return jswebtoken
+
+//       const payload = {
+//         user: {
+//           id: user.id,
+//           email: user.email,
+//         },
+//       };
+
+//       jwt.sign(
+//         payload,
+//         config.get('jwtSecret'),
+//         { expiresIn: 360000 },
+//         (err, token) => {
+//           if (err) throw err;
+//           return res.json(token);
+//         }
+//       );
+//     } catch (error) {
+//       res.status(500).send('Internal Server Erorr');
+//       console.log(error);
+//     }
+//   }
+// );
+
 //@route POST api/users/resource
 // @desc add new Resource from a user
 //@access public
@@ -102,6 +164,7 @@ router.post(
       check('name', 'Name is required').not().isEmpty(),
       check('qtty', 'Quantity is required').not().isEmpty(),
       check('pincode', 'Pincode is required').not().isEmpty(),
+      check('phone', 'Phone Number is required').not().isEmpty(),
     ],
   ],
   async (req, res) => {
@@ -109,7 +172,7 @@ router.post(
     if (!errors.isEmpty())
       return res.status(400).json({ errors: errors.array() });
 
-    const { name, qtty, pincode } = req.body;
+    const { name, qtty, pincode, phone } = req.body;
     var url = `https://api.postalpincode.in/pincode/${pincode}`;
 
     let poss = 1;
@@ -143,7 +206,6 @@ router.post(
 
             try {
               // Build a Resource Object
-              console.log(city, state, country, 'mnanjakj');
               console.log(poss);
               resource = new Resource({
                 name,
@@ -152,16 +214,15 @@ router.post(
                 city,
                 state,
                 country,
+                phone,
               });
               resource.user = req.user.id;
               await resource.save();
-              res.json({
-                message:
-                  'The resource has been added.Thanks for your help and support',
-              });
+              const allResources = await Resource.find({ user: req.user.id });
+              res.json(allResources);
             } catch (error) {
               console.log(error.message);
-              res.status(500).send('Internal Se,ma ,amrver Error');
+              res.status(500).send('Internal Server Error');
             }
           }
         }
@@ -181,6 +242,7 @@ router.put(
       check('name', 'Name is required').not().isEmpty(),
       check('qtty', 'Quantity is required').not().isEmpty(),
       check('pincode', 'Pincode is required').not().isEmpty(),
+      check('phone', 'Pincode is required').not().isEmpty(),
     ],
   ],
   async (req, res) => {
@@ -188,7 +250,7 @@ router.put(
     if (!errors.isEmpty())
       return res.status(400).json({ errors: errors.array() });
 
-    const { name, qtty, pincode } = req.body;
+    const { name, qtty, pincode, phone } = req.body;
     var url = `https://api.postalpincode.in/pincode/${pincode}`;
 
     let poss = 1;
@@ -230,6 +292,7 @@ router.put(
                   city: city,
                   state: state,
                   country: country,
+                  phone: phone,
                 }
               );
 
@@ -242,10 +305,8 @@ router.put(
               }
 
               await reqResource.save();
-              res.json({
-                message:
-                  'The resource has been updated.Thanks for your help and support',
-              });
+              const allResources = await Resource.find({ user: req.user.id });
+              res.json(allResources);
             } catch (error) {
               console.log(error.message);
               if (error.kind === 'ObjectId')
@@ -260,4 +321,29 @@ router.put(
     );
   }
 );
+
+//@route DELETE /api/users/:resource_id
+// @desc delete a certain resource of the user
+//@access Private
+router.delete('/:resource_id', auth, async (req, res) => {
+  try {
+    const reqResource = await Resource.findById(req.params.resource_id);
+
+    //check whether the reource is there or not
+    if (!reqResource) res.status(404).json({ msg: 'No such resource exists' });
+
+    if (reqResource.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'User not Authorised' });
+    }
+    await reqResource.delete();
+    const allResources = await Resource.find({ user: req.user.id });
+    res.json(allResources);
+  } catch (error) {
+    console.log(error.message);
+    if (error.kind === 'ObjectId')
+      res.status(400).json({ msg: 'Resource not Found' });
+    res.status(500).send('Internal Server error');
+  }
+});
+
 module.exports = router;

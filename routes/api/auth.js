@@ -59,6 +59,7 @@ router.post(
       const payload = {
         user: {
           id: user.id,
+          email: user.email,
         },
       };
       //edit it to an hour b4 deploying
